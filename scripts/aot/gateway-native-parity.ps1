@@ -4,14 +4,19 @@
     Runs the Phase 5 Gateway protocol/infrastructure matrix against native processes.
 
 .DESCRIPTION
-    Starts a native Admin and two native Gateway executables against real PostgreSQL
-    and Redis, then runs the native JSON SignalR/HTTP supported-boundary probe.
+    Starts a native Admin and two native Gateway executables against real PostgreSQL,
+    Redis, and S3-compatible storage, then runs the native supported-boundary probe.
 #>
 [CmdletBinding()]
 param(
     [string]$ArtifactDirectory,
     [string]$DatabaseUrl = $env:DATABASE_URL,
     [string]$RedisUrl = $env:REDIS_URL,
+    [string]$S3Endpoint = $env:CONDUIT_S3_ENDPOINT,
+    [string]$S3AccessKeyId = $env:CONDUIT_S3_ACCESS_KEY_ID,
+    [string]$S3SecretAccessKey = $env:CONDUIT_S3_SECRET_ACCESS_KEY,
+    [string]$S3BucketName = $env:CONDUIT_S3_BUCKET_NAME,
+    [string]$S3Region = 'us-east-1',
     [string]$MasterKey = 'native-aot-parity-master-key-32-bytes',
     [int]$GatewayPort = 15100,
     [int]$SecondaryGatewayPort = 15101,
@@ -33,6 +38,10 @@ New-Item -ItemType Directory -Force -Path $logRoot | Out-Null
 
 if (-not $DatabaseUrl) { throw 'DatabaseUrl not set.' }
 if (-not $RedisUrl) { throw 'RedisUrl not set.' }
+if (-not $S3Endpoint) { throw 'S3Endpoint not set.' }
+if (-not $S3AccessKeyId) { throw 'S3AccessKeyId not set.' }
+if (-not $S3SecretAccessKey) { throw 'S3SecretAccessKey not set.' }
+if (-not $S3BucketName) { throw 'S3BucketName not set.' }
 
 function Get-NativeExecutable([string]$service) {
     $name = "ConduitLLM.$service"
@@ -91,6 +100,12 @@ if (-not $NoBuild) {
 
 $env:DATABASE_URL = $DatabaseUrl
 $env:REDIS_URL = $RedisUrl
+$env:CONDUIT_MEDIA_STORAGE_TYPE = 'S3'
+$env:CONDUIT_S3_ENDPOINT = $S3Endpoint
+$env:CONDUIT_S3_ACCESS_KEY_ID = $S3AccessKeyId
+$env:CONDUIT_S3_SECRET_ACCESS_KEY = $S3SecretAccessKey
+$env:CONDUIT_S3_BUCKET_NAME = $S3BucketName
+$env:CONDUIT_S3_REGION = $S3Region
 $env:CONDUIT_MASTER_KEY = $MasterKey
 $env:CONDUIT_NATIVE_PROVIDER_URL = "http://127.0.0.1:$ProviderPort"
 $env:CONDUIT_MIGRATION_MODE = 'Skip'
@@ -109,6 +124,8 @@ if ($IsWindows) {
     # with an access-denied AggregateException on warning/error events.
     $env:Logging__EventLog__LogLevel__Default = 'None'
 }
+
+Wait-ForHttp "$($S3Endpoint.TrimEnd('/'))/minio/health/live" 'S3-compatible media storage'
 
 Write-Host 'Applying migrations before native process startup...'
 dotnet (Join-Path $migratorProject 'bin/Release/net10.0/ConduitLLM.Migrator.dll')

@@ -10,9 +10,13 @@ using System.Text;
 internal static class NativeProviderStub
 {
     public const string ApiKey = "native-provider-key";
+    public const string ImageBase64 =
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+    public static byte[] ImageBytes => Convert.FromBase64String(ImageBase64);
 
     private static int _nonStreamingRequests;
     private static int _streamingRequests;
+    private static int _imageRequests;
     private static int _errorRequests;
     private static int _authorizationFailures;
     private static int _activeCancellationRequests;
@@ -62,13 +66,15 @@ internal static class NativeProviderStub
             if (request.Method == "GET" && request.Path == "/probe/state")
             {
                 var state = $$"""
-                    {"non_stream_requests":{{Volatile.Read(ref _nonStreamingRequests)}},"stream_requests":{{Volatile.Read(ref _streamingRequests)}},"error_requests":{{Volatile.Read(ref _errorRequests)}},"authorization_failures":{{Volatile.Read(ref _authorizationFailures)}},"active_cancellation_requests":{{Volatile.Read(ref _activeCancellationRequests)}},"cancellations_observed":{{Volatile.Read(ref _cancellationsObserved)}}}
+                    {"non_stream_requests":{{Volatile.Read(ref _nonStreamingRequests)}},"stream_requests":{{Volatile.Read(ref _streamingRequests)}},"image_requests":{{Volatile.Read(ref _imageRequests)}},"error_requests":{{Volatile.Read(ref _errorRequests)}},"authorization_failures":{{Volatile.Read(ref _authorizationFailures)}},"active_cancellation_requests":{{Volatile.Read(ref _activeCancellationRequests)}},"cancellations_observed":{{Volatile.Read(ref _cancellationsObserved)}}}
                     """;
                 await WriteJsonAsync(stream, HttpStatusCode.OK, state);
                 return;
             }
 
-            if (request.Method != "POST" || request.Path != "/chat/completions")
+            var isChatCompletion = request.Method == "POST" && request.Path == "/chat/completions";
+            var isImageGeneration = request.Method == "POST" && request.Path == "/images/generations";
+            if (!isChatCompletion && !isImageGeneration)
             {
                 await WriteJsonAsync(
                     stream,
@@ -85,6 +91,15 @@ internal static class NativeProviderStub
                     stream,
                     HttpStatusCode.Unauthorized,
                     "{\"error\":{\"message\":\"native provider credential rejected\",\"type\":\"authentication_error\"}}");
+                return;
+            }
+
+            if (isImageGeneration)
+            {
+                Interlocked.Increment(ref _imageRequests);
+                await WriteJsonAsync(stream, HttpStatusCode.OK, $$"""
+                    {"created":1787800003,"data":[{"b64_json":"{{ImageBase64}}","revised_prompt":"native media persistence"}]}
+                    """);
                 return;
             }
 

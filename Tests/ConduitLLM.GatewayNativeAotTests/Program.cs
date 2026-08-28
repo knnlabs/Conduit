@@ -104,6 +104,7 @@ internal sealed class GatewayNativeParityProbe(ProbeSettings settings)
         await AssertRuntimeAndOperationsAsync();
         await AssertAsyncTaskPersistenceAsync();
         await AssertProviderTransportAsync();
+        await AssertS3MediaWorkflowAsync();
         await AssertSignalRAndRedisAsync();
         Console.WriteLine("Gateway NativeAOT supported protocol/infrastructure probe: PASS");
     }
@@ -131,6 +132,7 @@ internal sealed class GatewayNativeParityProbe(ProbeSettings settings)
                      "provider-cancellation",
                      "request-accounting-and-spend-settlement",
                      "async-task-persistence",
+                     "s3-media-api-workflows",
                      "authenticated-signalr-json-connections",
                      "redis-signalr-backplane-and-rate-limits",
                      "redis-ephemeral-key-cache"
@@ -151,6 +153,8 @@ internal sealed class GatewayNativeParityProbe(ProbeSettings settings)
             "authenticated HTTP is no longer excluded as one undifferentiated boundary");
         True(!exclusions.Contains("provider-routing-and-streaming"),
             "process-tested provider routing and streaming are no longer excluded");
+        True(!exclusions.Contains("s3-media-api-workflows"),
+            "process-tested S3 media workflows are no longer excluded");
 
         await ExpectAsync(await _admin.GetAsync("health/live"), HttpStatusCode.OK, "Admin liveness");
         await ExpectAsync(await _gateway.GetAsync("health/live"), HttpStatusCode.OK, "Gateway liveness");
@@ -329,6 +333,102 @@ internal sealed class GatewayNativeParityProbe(ProbeSettings settings)
             "downstream disconnect cancels the provider HTTP stream");
     }
 
+    private async Task AssertS3MediaWorkflowAsync()
+    {
+        using (var request = AuthorizedRequest(HttpMethod.Post, "v1/images/generations"))
+        {
+            request.Content = new StringContent(
+                $$"""
+                  {"model":"{{NativeParityFixture.ModelAlias}}","prompt":"{{NativeParityFixture.MediaPrompt}}","n":1,"size":"1024x1024","response_format":"url"}
+                  """,
+                Encoding.UTF8,
+                "application/json");
+            using var response = await _gateway.SendAsync(request);
+            await ExpectAsync(response, HttpStatusCode.OK,
+                "native provider image generation and S3 storage");
+            using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var image = GetProperty(document.RootElement, "data").EnumerateArray().Single();
+            True(!string.IsNullOrWhiteSpace(GetString(image, "url")),
+                "stored image response contains an S3 URL");
+        }
+
+        var media = await ReadMediaSnapshotAsync();
+        True(media.StorageKey.Contains('/', StringComparison.Ordinal),
+            "native media record contains the generated S3 key");
+        Equal("image/png", media.ContentType, "native media content type persists");
+        Equal("native-aot-provider-model", media.Model, "native media model persists");
+        True(media.SizeBytes == NativeProviderStub.ImageBytes.Length,
+            "native media byte count persists");
+        True(media.IsActive, "native media row is active");
+
+        using (var request = AuthorizedRequest(
+                   HttpMethod.Get,
+                   $"v1/conduit/downloads/metadata/{media.StorageKey}"))
+        using (var response = await _secondaryGateway.SendAsync(request))
+        {
+            await ExpectAsync(response, HttpStatusCode.OK,
+                "cross-host authenticated S3 metadata with typed ownership");
+            True((await response.Content.ReadAsStringAsync()).Contains(
+                    "image/png",
+                    StringComparison.OrdinalIgnoreCase),
+                "S3 metadata preserves the image content type");
+        }
+
+        using (var request = AuthorizedRequest(
+                   HttpMethod.Get,
+                   $"v1/conduit/downloads/{media.StorageKey}"))
+        using (var response = await _secondaryGateway.SendAsync(request))
+        {
+            await ExpectAsync(response, HttpStatusCode.OK,
+                "cross-host authenticated S3 download with typed ownership");
+            True((await response.Content.ReadAsByteArrayAsync()).SequenceEqual(
+                    NativeProviderStub.ImageBytes),
+                "authenticated S3 download preserves provider image bytes");
+        }
+
+        using (var response = await _gateway.GetAsync($"v1/conduit/media/{media.StorageKey}"))
+        {
+            await ExpectAsync(response, HttpStatusCode.OK, "native S3 media serving endpoint");
+            True((await response.Content.ReadAsByteArrayAsync()).SequenceEqual(
+                    NativeProviderStub.ImageBytes),
+                "media serving endpoint preserves provider image bytes");
+        }
+
+        var providerState = await GetProviderStateAsync();
+        True(providerState.ImageRequests == 1,
+            "mock provider observed image-generation HTTP with credentials");
+    }
+
+    private async Task<MediaSnapshot> ReadMediaSnapshotAsync()
+    {
+        await using var dataSource = NpgsqlDataSource.Create(settings.DatabaseConnectionString);
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT media."StorageKey", media."ContentType", media."SizeBytes",
+                media."Model", media."DeletedAt" IS NULL
+            FROM "MediaRecords" media
+            JOIN "VirtualKeys" key ON key."Id" = media."VirtualKeyId"
+            WHERE key."KeyHash" = @keyHash AND media."Prompt" = @prompt
+            ORDER BY media."CreatedAt" DESC
+            LIMIT 1
+            """;
+        command.Parameters.AddWithValue("keyHash", NpgsqlDbType.Varchar, NativeParityFixture.VirtualKeyHash);
+        command.Parameters.AddWithValue("prompt", NpgsqlDbType.Text, NativeParityFixture.MediaPrompt);
+        await using var reader = await command.ExecuteReaderAsync();
+        if (!await reader.ReadAsync())
+        {
+            throw new InvalidOperationException("Native image workflow did not persist a media record.");
+        }
+
+        return new MediaSnapshot(
+            reader.GetString(0),
+            reader.GetString(1),
+            reader.GetInt64(2),
+            reader.GetString(3),
+            reader.GetBoolean(4));
+    }
+
     private async Task AssertDurableAccountingAsync()
     {
         const decimal singleRequestCost = 0.000075m;
@@ -438,6 +538,7 @@ internal sealed class GatewayNativeParityProbe(ProbeSettings settings)
         return new ProviderState(
             GetProperty(document.RootElement, "non_stream_requests").GetInt32(),
             GetProperty(document.RootElement, "stream_requests").GetInt32(),
+            GetProperty(document.RootElement, "image_requests").GetInt32(),
             GetProperty(document.RootElement, "error_requests").GetInt32(),
             GetProperty(document.RootElement, "authorization_failures").GetInt32(),
             GetProperty(document.RootElement, "active_cancellation_requests").GetInt32(),
@@ -734,10 +835,18 @@ internal sealed class GatewayNativeParityProbe(ProbeSettings settings)
     private readonly record struct ProviderState(
         int NonStreamingRequests,
         int StreamingRequests,
+        int ImageRequests,
         int ErrorRequests,
         int AuthorizationFailures,
         int ActiveCancellationRequests,
         int CancellationsObserved);
+
+    private sealed record MediaSnapshot(
+        string StorageKey,
+        string ContentType,
+        long SizeBytes,
+        string Model,
+        bool IsActive);
 
     private sealed record AccountingSnapshot(
         long MatchingRequestLogs,
@@ -752,7 +861,9 @@ internal static class NativeParityFixture
     public const string VirtualKey = "condt_native_aot_parity";
     public const string ModelAlias = "native-aot-model";
     public const string TaskId = "task_native_aot_parity";
+    public const string MediaPrompt = "native-s3-media-persistence";
     public const string FixtureOwner = "native-aot-parity";
+    private const int MediaPolicyId = -9010;
     public static string VirtualKeyHash => Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes(VirtualKey)))
         .ToLowerInvariant();
@@ -769,6 +880,7 @@ internal static class NativeParityFixture
 
         await UpsertSettingAsync(connection, transaction, "IpFilter:Enabled", "true", now);
         await UpsertSettingAsync(connection, transaction, "IpFilter:DefaultAllow", "false", now);
+        await UpsertMediaPolicyAsync(connection, transaction, now);
         var groupId = await UpsertGroupAsync(connection, transaction, now);
         var keyId = await UpsertVirtualKeyAsync(connection, transaction, groupId, now);
         await ReplaceIpFiltersAsync(connection, transaction, keyId, now);
@@ -783,7 +895,7 @@ internal static class NativeParityFixture
         await transaction.CommitAsync();
         await ResetRedisAsync(redisConnectionString, groupId);
         Console.WriteLine(
-            "Seeded native Gateway virtual-key, IP-filter, model-routing, provider, accounting, and async-task parity fixture.");
+            "Seeded native Gateway virtual-key, IP-filter, model-routing, provider, accounting, async-task, and media parity fixture.");
     }
 
     private static async Task UpsertModelRoutingAsync(
@@ -851,13 +963,14 @@ internal static class NativeParityFixture
                 "CapabilitiesLastVerifiedAt", "TokenizerType", "MaxInputTokens", "MaxOutputTokens",
                 "IsActive", "Parameters", "CreatedAt", "UpdatedAt")
             VALUES (-9004, 'Native AOT parity model', 'v1', 'Native process routing fixture', NULL, -9003,
-                true, false, false, false, false, false, false, true, true, true,
-                '["text","image"]'::jsonb, '["text"]'::jsonb, 2, @now, 0, 64000, 8192,
+                true, true, false, false, false, false, false, true, true, true,
+                '["text","image"]'::jsonb, '["text","image"]'::jsonb, 2, @now, 0, 64000, 8192,
                 true, NULL, @now, @now)
             ON CONFLICT ("Id") DO UPDATE SET
                 "Name" = EXCLUDED."Name",
                 "ModelSeriesId" = EXCLUDED."ModelSeriesId",
                 "SupportsVision" = true,
+                "SupportsImageGeneration" = true,
                 "SupportsChat" = true,
                 "SupportsFunctionCalling" = true,
                 "SupportsStreaming" = true,
@@ -889,11 +1002,13 @@ internal static class NativeParityFixture
                 "QualityScore", "SpeedScore", "Identifier", "Provider", "ModelCostId",
                 "IsPrimary", "Metadata")
             VALUES (-9006, -9004, true, 32000, 4096, '["text","image"]'::jsonb,
-                '["text"]'::jsonb, '{"supports_json_schema":true}'::jsonb, 2, @now,
+                '["text","image"]'::jsonb, '{"supports_json_schema":true}'::jsonb, 2, @now,
                 NULL, 0.95, 1.5, 'native-aot-provider-model', 1, -9005, true, NULL)
             ON CONFLICT ("Id") DO UPDATE SET
                 "ModelId" = EXCLUDED."ModelId",
                 "IsEnabled" = true,
+                "InputModalities" = EXCLUDED."InputModalities",
+                "OutputModalities" = EXCLUDED."OutputModalities",
                 "OperationalCapabilities" = EXCLUDED."OperationalCapabilities",
                 "ModelCostId" = EXCLUDED."ModelCostId";
 
@@ -937,11 +1052,44 @@ internal static class NativeParityFixture
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
+            DELETE FROM "MediaRecords" WHERE "VirtualKeyId" = @keyId;
             DELETE FROM "RequestLogs" WHERE "VirtualKeyId" = @keyId;
             DELETE FROM "VirtualKeyGroupTransactions" WHERE "VirtualKeyGroupId" = @groupId;
             """;
         command.Parameters.AddWithValue("keyId", NpgsqlDbType.Integer, keyId);
         command.Parameters.AddWithValue("groupId", NpgsqlDbType.Integer, groupId);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private static async Task UpsertMediaPolicyAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        DateTime now)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT INTO "MediaRetentionPolicies" (
+                "Id", "Name", "Description", "PositiveBalanceRetentionDays",
+                "ZeroBalanceRetentionDays", "NegativeBalanceRetentionDays",
+                "SoftDeleteGracePeriodDays", "RespectRecentAccess",
+                "RecentAccessWindowDays", "IsDefault", "MaxStorageSizeBytes",
+                "MaxFileCount", "QuotaExceededBehavior", "CreatedAt", "UpdatedAt",
+                "IsActive")
+            VALUES (
+                @id, 'Native AOT parity media', 'Native process media quota fixture',
+                60, 14, 3, 7, true, 7, false, 1048576, 1, 0, @now, @now, true)
+            ON CONFLICT ("Id") DO UPDATE SET
+                "Name" = EXCLUDED."Name",
+                "Description" = EXCLUDED."Description",
+                "MaxStorageSizeBytes" = EXCLUDED."MaxStorageSizeBytes",
+                "MaxFileCount" = EXCLUDED."MaxFileCount",
+                "QuotaExceededBehavior" = EXCLUDED."QuotaExceededBehavior",
+                "UpdatedAt" = EXCLUDED."UpdatedAt",
+                "IsActive" = true
+            """;
+        command.Parameters.AddWithValue("id", NpgsqlDbType.Integer, MediaPolicyId);
+        command.Parameters.AddWithValue("now", NpgsqlDbType.TimestampTz, now);
         await command.ExecuteNonQueryAsync();
     }
 
@@ -1059,14 +1207,15 @@ internal static class NativeParityFixture
                     "Balance" = 100.0,
                     "LifetimeCreditsAdded" = 100.0,
                     "LifetimeSpent" = 0.0,
+                    "MediaRetentionPolicyId" = @mediaPolicyId,
                     "UpdatedAt" = @now
                 WHERE "ExternalGroupId" = @externalId
                 RETURNING "Id"
             ), inserted AS (
                 INSERT INTO "VirtualKeyGroups" (
                     "ExternalGroupId", "GroupName", "Balance", "LifetimeCreditsAdded",
-                    "LifetimeSpent", "CreatedAt", "UpdatedAt")
-                SELECT @externalId, @name, 100.0, 100.0, 0.0, @now, @now
+                    "LifetimeSpent", "MediaRetentionPolicyId", "CreatedAt", "UpdatedAt")
+                SELECT @externalId, @name, 100.0, 100.0, 0.0, @mediaPolicyId, @now, @now
                 WHERE NOT EXISTS (SELECT 1 FROM updated)
                 RETURNING "Id"
             )
@@ -1077,6 +1226,7 @@ internal static class NativeParityFixture
             """;
         command.Parameters.AddWithValue("externalId", NpgsqlDbType.Varchar, FixtureOwner);
         command.Parameters.AddWithValue("name", NpgsqlDbType.Varchar, "Native AOT parity group");
+        command.Parameters.AddWithValue("mediaPolicyId", NpgsqlDbType.Integer, MediaPolicyId);
         command.Parameters.AddWithValue("now", NpgsqlDbType.TimestampTz, now);
         return (int)(await command.ExecuteScalarAsync()
             ?? throw new InvalidOperationException("Native parity group upsert returned no ID."));

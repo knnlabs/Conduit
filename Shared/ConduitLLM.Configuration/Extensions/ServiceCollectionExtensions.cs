@@ -58,6 +58,7 @@ namespace ConduitLLM.Configuration.Extensions
 
             // Register media record repository
             services.AddScoped<IMediaRecordRepository, MediaRecordRepository>();
+            services.AddScoped<IMediaRuntimeStore, EfMediaRuntimeStore>();
 
             // Register Function repositories
             services.AddScoped<IFunctionConfigurationRepository, FunctionConfigurationRepository>();

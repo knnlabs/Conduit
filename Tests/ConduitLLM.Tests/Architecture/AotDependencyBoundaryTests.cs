@@ -124,12 +124,18 @@ public sealed class AotDependencyBoundaryTests
             candidate => candidate.ServiceType == typeof(IAsyncTaskRuntimeStore));
         Assert.Equal(ServiceLifetime.Scoped, asyncTaskDescriptor.Lifetime);
         Assert.Equal(typeof(EfAsyncTaskRuntimeStore), asyncTaskDescriptor.ImplementationType);
+
+        var mediaDescriptor = Assert.Single(
+            services,
+            candidate => candidate.ServiceType == typeof(IMediaRuntimeStore));
+        Assert.Equal(ServiceLifetime.Scoped, mediaDescriptor.Lifetime);
+        Assert.Equal(typeof(EfMediaRuntimeStore), mediaDescriptor.ImplementationType);
     }
 #endif
 
 #if CONDUIT_NATIVE_AOT
     [Fact]
-    public void NativeNonGatewayRepositoryGraphRetainsEfAsyncTaskRuntimeStore()
+    public void NativeNonGatewayRepositoryGraphRetainsEfRuntimeStores()
     {
         var services = new ServiceCollection();
 
@@ -140,6 +146,12 @@ public sealed class AotDependencyBoundaryTests
             candidate => candidate.ServiceType == typeof(IAsyncTaskRuntimeStore));
         Assert.Equal(ServiceLifetime.Scoped, descriptor.Lifetime);
         Assert.Equal(typeof(EfAsyncTaskRuntimeStore), descriptor.ImplementationType);
+
+        var mediaDescriptor = Assert.Single(
+            services,
+            candidate => candidate.ServiceType == typeof(IMediaRuntimeStore));
+        Assert.Equal(ServiceLifetime.Scoped, mediaDescriptor.Lifetime);
+        Assert.Equal(typeof(EfMediaRuntimeStore), mediaDescriptor.ImplementationType);
     }
 
     [Fact]
@@ -152,6 +164,7 @@ public sealed class AotDependencyBoundaryTests
         services.AddScoped<IProviderKeyCredentialRepository>(_ => null!);
         services.AddScoped<IVirtualKeyRuntimeStore>(_ => null!);
         services.AddScoped<IAsyncTaskRuntimeStore>(_ => null!);
+        services.AddScoped<IMediaRuntimeStore>(_ => null!);
         services.AddScoped<IRequestLogRuntimeStore>(_ => null!);
         services.AddScoped<IRequestLogRuntimeWriter>(_ => null!);
         services.AddScoped<IModelProviderMappingRuntimeStore>(_ => null!);
@@ -166,6 +179,7 @@ public sealed class AotDependencyBoundaryTests
         AssertNativeSingleton<IProviderKeyCredentialRepository, NpgsqlProviderKeyCredentialRepository>(services);
         AssertNativeSingleton<IVirtualKeyRuntimeStore, NpgsqlVirtualKeyRuntimeStore>(services);
         AssertNativeSingleton<IAsyncTaskRuntimeStore, NpgsqlAsyncTaskRuntimeStore>(services);
+        AssertNativeSingleton<IMediaRuntimeStore, NpgsqlMediaRuntimeStore>(services);
         AssertNativeSingleton<IRequestLogRuntimeStore, NpgsqlRequestLogRuntimeStore>(services);
         AssertNativeSingleton<IRequestLogRuntimeWriter, StoreBackedRequestLogRuntimeWriter>(services);
         AssertNativeSingleton<IModelProviderMappingRuntimeStore, NpgsqlModelProviderMappingRuntimeStore>(services);
@@ -338,6 +352,29 @@ public sealed class AotDependencyBoundaryTests
 
         Assert.Contains(typeof(IAsyncTaskRuntimeStore), constructorParameters);
         Assert.DoesNotContain(typeof(IAsyncTaskRepository), constructorParameters);
+    }
+
+    [Fact]
+    public void GatewayMediaPathsUseOnlyFixedShapePersistence()
+    {
+        var requestPathTypes = new[]
+        {
+            typeof(MediaLifecycleService),
+            typeof(MediaQuotaService),
+            typeof(MediaEndpoints),
+            typeof(DownloadsEndpoints)
+        };
+
+        foreach (var requestPathType in requestPathTypes)
+        {
+            var constructorParameters = requestPathType.GetConstructors()
+                .SelectMany(constructor => constructor.GetParameters())
+                .Select(parameter => parameter.ParameterType)
+                .ToArray();
+            Assert.Contains(typeof(IMediaRuntimeStore), constructorParameters);
+            Assert.DoesNotContain(typeof(IMediaRecordRepository), constructorParameters);
+            Assert.DoesNotContain(typeof(IConfigurationDbContext), constructorParameters);
+        }
     }
 
     [Fact]

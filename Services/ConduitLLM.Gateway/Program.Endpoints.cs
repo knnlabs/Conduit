@@ -31,6 +31,7 @@ public partial class Program
                     "provider-cancellation",
                     "request-accounting-and-spend-settlement",
                     "async-task-persistence",
+                    "s3-media-api-workflows",
                     "forwarded-headers",
                     "liveness-metrics-opentelemetry"
                 ]
@@ -53,7 +54,6 @@ public partial class Program
                     "signalr-messagepack",
                     "ef-core-query-data-plane",
                     "redis-virtual-key-authentication-cache",
-                    "s3-media-api-workflows",
                     "readiness-and-database-health"
                 ]
                 : []);

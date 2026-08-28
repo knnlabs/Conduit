@@ -59,8 +59,8 @@ snapshots, timestamp touches, and atomic balance/ledger adjustments. Its EF adap
 fixed projections and updates, while its typed-Npgsql adapter is covered by the shared
 PostgreSQL contract and published native probe. Native Gateway builds select this store;
 the JIT Gateway retains its cached/direct EF-backed services. This selection is a bounded
-data-plane step rather than a full native support claim because unextracted model mapping,
-logging, task, and media queries remain.
+data-plane step; the downstream routing, accounting, task, and media boundaries are
+tracked separately below.
 
 The next extracted boundary enumerates Gateway model-routing reads instead of exposing
 the broad `ModelProviderMappingRepository` graph. The runtime contract includes alias,
@@ -97,9 +97,23 @@ hub-specific persistence path. Published native clients connect to every hub fam
 the virtual-key management hub sends status from the hydrated runtime snapshot; and
 Redis supplies distributed admission, method counters, webhook tracking, cross-host
 backplane delivery, and ephemeral-key validation for the public video hub. This removes
-authenticated JSON hub execution from the native exclusion list. Task group operations
-do not read task rows, so task and media persistence remain excluded until their own
-operation-specific stores and PostgreSQL parity suites land.
+authenticated JSON hub execution from the native exclusion list.
+
+Async-task request-time operations now use `IAsyncTaskRuntimeStore`. JIT and non-Gateway
+hosts use an EF reference adapter, while native Gateway selects typed Npgsql for task
+CRUD, claims, provider phases, leases, recovery, retry preparation, and retention. Both
+implementations pass one real-PostgreSQL lifecycle contract; the published persistence
+probe exercises the typed backend; and the two-Gateway gate proves cross-host read and
+cancel with a durable row transition.
+
+Media ownership and quota operations now use `IMediaRuntimeStore`. Its EF reference
+adapter preserves the JIT behavior, while native Gateway selects fixed SQL for media
+creation, storage-key/owner reads, access updates, active aggregates, and effective
+group quota policy. The PostgreSQL parity contract covers tombstones, group filtering,
+default-policy fallback, and assigned unlimited policies. The published persistence
+probe exercises the Npgsql store, and the process gate carries a provider-generated PNG
+through quota enforcement, pinned MinIO, durable ownership, and cross-host authenticated
+download. Admin cleanup/reporting remains on the JIT repository surface.
 
 ## Exit criteria for revisiting the decision
 

@@ -78,12 +78,23 @@ jobs:
           DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
           REDIS_URL: redis://localhost:6379
 
+      - name: Launch S3-compatible media storage
+        run: >-
+          docker run --detach --name native-aot-minio --publish 9000:9000
+          --env MINIO_ROOT_USER=nativeaotminio
+          --env MINIO_ROOT_PASSWORD=nativeaotminiosecret
+          minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
+
       - name: Native Gateway supported protocol and infrastructure boundary
         shell: pwsh
         run: ./scripts/aot/gateway-native-parity.ps1 -NoBuild -ArtifactDirectory artifacts/native-aot
         env:
           DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
           REDIS_URL: redis://localhost:6379
+          CONDUIT_S3_ENDPOINT: http://localhost:9000
+          CONDUIT_S3_ACCESS_KEY_ID: nativeaotminio
+          CONDUIT_S3_SECRET_ACCESS_KEY: nativeaotminiosecret
+          CONDUIT_S3_BUCKET_NAME: conduit-native-aot-media
 
       - name: Publish native baseline summary
         if: always()

@@ -127,8 +127,17 @@ selects fixed SQL through typed Npgsql. The two implementations share a real-Pos
 behavioral contract, the typed implementation runs in the published persistence probe,
 and the two-host process gate reads and cancels a task across native Gateways before
 verifying the durable row.
-Media-record persistence and S3 workflows remain excluded until their operation-specific
-store is extracted.
+
+Media-record persistence is the next operation-specific boundary. `IMediaRuntimeStore`
+covers durable ownership, storage-key lookup, access statistics, active storage
+aggregates, and quota snapshots without exposing EF navigation graphs. JIT and Admin
+use the EF reference adapter; native Gateway selects fixed SQL through typed Npgsql.
+Both implementations pass the same real-PostgreSQL contract, including tombstones,
+group filtering, and assigned unlimited-policy semantics. The published persistence
+probe exercises the typed implementation, and the two-Gateway process gate carries a
+provider-generated PNG through quota enforcement, MinIO storage, durable ownership,
+cross-host metadata, and authenticated download. S3-compatible media workflows are
+therefore included in the native capability contract.
 
 ## Options considered
 
