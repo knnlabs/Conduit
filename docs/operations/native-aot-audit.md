@@ -131,11 +131,12 @@ callable against existing publish logs:
   -BaselinePath scripts/aot/linker-warning-baseline.json
 ```
 
-The 2026-08-27 `win-x64` native publish contains **147** unique first-party linker
-diagnostics: 45 `IL2026` warnings from EF query expression generation and 102
+The 2026-08-28 `win-x64` native publish contains **139** unique first-party linker
+diagnostics: 37 `IL2026` warnings from EF query expression generation and 102
 `IL3050` warnings from the generated EF compiled model. The same publish contains no
-first-party JSON metadata or security middleware diagnostics. These 147 warnings are
-an explicit burn-down baseline, not an acceptance waiver. NativeAOT readiness still
-requires a successful `linux-x64` publish with this baseline reduced to zero, followed
-by the full feature-parity and canary gates described in the feature matrix and
-promotion policy.
+first-party JSON metadata or security middleware diagnostics. These 139 warnings are
+an explicit burn-down baseline, not an acceptance waiver. The latest reduction removed
+the media-quota and Gateway batch-spend query paths from the linker inventory.
+NativeAOT readiness still requires a successful `linux-x64` publish with this baseline
+reduced to zero, followed by the full feature-parity and canary gates described in the
+feature matrix and promotion policy.

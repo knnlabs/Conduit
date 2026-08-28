@@ -105,4 +105,8 @@ The separate `scripts/test/wolverine-two-host-smoke.ps1 -NativeArtifactDirectory
 | MessagePack-CSharp | 3.1.4 | [NativeAOT support #1503](https://github.com/MessagePack-CSharp/MessagePack-CSharp/issues/1503), [generator issue #2283](https://github.com/MessagePack-CSharp/MessagePack-CSharp/issues/2283) | The SignalR MessagePack package/protocol is excluded from native builds; JSON remains supported. | Add a generated resolver for every hub payload, process-test all hubs with MessagePack, then remove the conditional package/protocol exclusion. |
 | AWS SDK for .NET S3 | 4.0.x | [trim-safe runtime dependency work #4354](https://github.com/aws/aws-sdk-net/issues/4354), [AOT tracking #2486](https://github.com/aws/aws-sdk-net/issues/2486) | Authenticated upload/read/download is process-tested against pinned MinIO, but AWS SDK linker diagnostics remain in the tracked warning baseline and CI does not cover every S3-compatible vendor. | Remove warnings only after the pinned SDK supplies the required trim annotations; add provider-specific gates before claiming behavior beyond the S3-compatible contract. |
 
-First-party linker warnings remain tracked by the epic's later warning-cleanup tasks. This ledger records third-party runtime/AOT boundaries specific to protocol and infrastructure parity.
+First-party linker warnings remain tracked by the parent epic's warning ratchet and are
+a production-promotion blocker. Reducing that ratchet to zero requires resolving the
+remaining Admin and Gateway EF query shapes plus generated compiled-model diagnostics.
+This ledger records third-party runtime/AOT boundaries specific to protocol and
+infrastructure parity.

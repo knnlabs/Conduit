@@ -97,6 +97,9 @@ jobs:
       - name: Run analyzer-only AOT audit
         shell: pwsh
         run: ./scripts/aot/aot-audit.ps1 -NoRestore
+      - name: Verify native promotion gate contract
+        shell: pwsh
+        run: ./scripts/aot/test-native-promotion.ps1
       - name: Add diagnostic counts to job summary
         if: always()
         shell: pwsh

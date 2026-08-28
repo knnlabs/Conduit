@@ -82,13 +82,6 @@
     {
       "service": "Admin",
       "project": "ConduitLLM.Admin",
-      "code": "IL2026",
-      "file": "Shared/ConduitLLM.Core/Services/MediaQuotaService.cs",
-      "count": 2
-    },
-    {
-      "service": "Admin",
-      "project": "ConduitLLM.Admin",
       "code": "IL3050",
       "file": "Shared/ConduitLLM.Configuration/Data/CompiledModels/BillingAuditEventEntityType.cs",
       "count": 1
@@ -253,20 +246,6 @@
       "code": "IL2026",
       "file": "Services/ConduitLLM.Gateway/Services/TaskProcessingMetricsService.cs",
       "count": 5
-    },
-    {
-      "service": "Gateway",
-      "project": "ConduitLLM.Gateway",
-      "code": "IL2026",
-      "file": "Shared/ConduitLLM.Configuration/Services/BatchSpendUpdateService.cs",
-      "count": 4
-    },
-    {
-      "service": "Gateway",
-      "project": "ConduitLLM.Gateway",
-      "code": "IL2026",
-      "file": "Shared/ConduitLLM.Core/Services/MediaQuotaService.cs",
-      "count": 2
     },
     {
       "service": "Gateway",
