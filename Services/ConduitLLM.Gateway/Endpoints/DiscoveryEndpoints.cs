@@ -23,7 +23,7 @@ namespace ConduitLLM.Gateway.Endpoints
     {
         private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly IModelCapabilityService _modelCapabilityService;
-        private readonly IVirtualKeyService _virtualKeyService;
+        private readonly IVirtualKeyRuntimeService _virtualKeyService;
         private readonly IDiscoveryCacheService _discoveryCacheService;
         private readonly JsonSerializerOptions _wireJsonOptions;
         private readonly DiscoveryCacheOptions _discoveryOptions;
@@ -34,7 +34,7 @@ namespace ConduitLLM.Gateway.Endpoints
         public DiscoveryEndpoints(
             IDbContextFactory<ConduitDbContext> dbContextFactory,
             IModelCapabilityService modelCapabilityService,
-            IVirtualKeyService virtualKeyService,
+            IVirtualKeyRuntimeService virtualKeyService,
             IDiscoveryCacheService discoveryCacheService,
             JsonSerializerOptions wireJsonOptions,
             IOptions<DiscoveryCacheOptions> discoveryOptions,
