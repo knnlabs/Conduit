@@ -38,7 +38,7 @@ inventory, regenerate it with:
 Do not update the baseline to hide a regression. The later NativeAOT phases should
 normally only reduce it.
 
-## Current ratchet
+## Analyzer ratchet
 
 The 2026-08-12 post-phase audit contains **0** unique first-party diagnostics,
 down from 509 before the epic-level cleanups. The first cleanup removed all 139
@@ -97,9 +97,11 @@ The final Admin cleanup removed all 73 remaining diagnostics by routing persiste
 and HTTP JSON through generated contracts, replacing reflective options validation,
 and removing redundant query conversion.
 
-The first-party inventory is now empty. Treat the generated `diagnostics.json` as the
-source of truth when checking for regressions; do not infer warning counts from
-duplicated native-linker output.
+The first-party analyzer inventory is now empty. Treat the generated
+`diagnostics.json` as the source of truth for the fast analyzer lane. This does not
+mean that the native linker inventory is empty: the linker analyzes additional
+closed generic instantiations and EF expression trees that are not reached by the
+regular compiler analyzers.
 
 ## Native publish lane
 
@@ -107,11 +109,33 @@ duplicated native-linker output.
 merges to `master`, on a weekly schedule, and on manual dispatch. The workflow:
 
 1. Native-publishes both service projects without changing normal build properties.
-2. Moves `.dbg`/`.pdb` files out of runtime directories into a symbols artifact.
-3. Launches each native executable using the infrastructure-free OpenAPI entry path.
-4. Retains publish time, executable and runtime size, OpenAPI readiness time, peak
+2. Inventories the real linker diagnostics and rejects increases above the checked-in
+   `scripts/aot/linker-warning-baseline.json` ratchet.
+3. Moves `.dbg`/`.pdb` files out of runtime directories into a symbols artifact.
+4. Launches each native executable using the infrastructure-free OpenAPI entry path.
+5. Retains publish time, executable and runtime size, OpenAPI readiness time, peak
    working set, generated OpenAPI documents, and process logs.
 
 Native smoke results are measurements during the readiness epic. A known runtime
 failure is visible in the report and job summary without discarding successful
 publish artifacts. JIT build/test and Docker validation jobs are unchanged.
+
+The publish lane writes `linker-diagnostics.json` with each de-duplicated first-party
+`IL2026`, `IL3050`, `IL207x`, or `IL209x` diagnostic and `linker-summary.md` with
+counts by service, project, and warning code. The evaluator is also independently
+callable against existing publish logs:
+
+```powershell
+./scripts/aot/evaluate-native-linker-warnings.ps1 `
+  -ReportDirectory artifacts/native-aot/reports `
+  -BaselinePath scripts/aot/linker-warning-baseline.json
+```
+
+The 2026-08-27 `win-x64` native publish contains **147** unique first-party linker
+diagnostics: 45 `IL2026` warnings from EF query expression generation and 102
+`IL3050` warnings from the generated EF compiled model. The same publish contains no
+first-party JSON metadata or security middleware diagnostics. These 147 warnings are
+an explicit burn-down baseline, not an acceptance waiver. NativeAOT readiness still
+requires a successful `linux-x64` publish with this baseline reduced to zero, followed
+by the full feature-parity and canary gates described in the feature matrix and
+promotion policy.

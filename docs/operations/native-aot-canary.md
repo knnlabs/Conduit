@@ -92,6 +92,12 @@ deployment and monitoring systems, then evaluate it with the benchmark:
   -Service admin `
   -BenchmarkPath artifacts/native-benchmark/admin.json `
   -CanaryEvidencePath artifacts/native-canary/admin-evidence.json
+
+./scripts/aot/evaluate-native-promotion.ps1 `
+  -Service gateway `
+  -BenchmarkPath artifacts/native-benchmark/gateway.json `
+  -CanaryEvidencePath artifacts/native-canary/gateway-evidence.json `
+  -AdminCanaryEvidencePath artifacts/native-canary/admin-evidence.json
 ```
 
 The gate requires at least a 10% image reduction, 20% cold-readiness reduction, 15%
@@ -100,6 +106,10 @@ rate at or below 0.1%, 24 consecutive healthy monitoring windows, full feature
 coverage, and tested automatic and manual rollback. Admin must complete its seven-day
 soak before a Gateway canary starts. Gateway then completes its own seven-day soak
 with every row of `gateway-native-aot-feature-matrix.md` supported and passing.
+The evaluator also requires digest-pinned zero-failure benchmark inputs, matching JIT
+and backing-service evidence, dashboard and alert links, critical-vulnerability
+review, and verified SBOM/provenance attestations. Claimed soak hours cannot exceed
+the recorded timestamps.
 
 ## Canary procedure
 

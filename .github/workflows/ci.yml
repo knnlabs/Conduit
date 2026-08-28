@@ -4,7 +4,7 @@ on:
   push:
     branches: [master, dev]
   pull_request:
-    branches: [master]
+    branches: [master, dev]
 
 env:
   DOTNET_VERSION: '10.0.x'
@@ -165,8 +165,12 @@ jobs:
         run: |
           dotnet restore
           dotnet build --no-restore
-          # Run tests but exclude integration tests and timing-sensitive tests
-          dotnet test --no-build --verbosity normal --filter "FullyQualifiedName!~IntegrationTests&Category!=TimingSensitive"
+          # Billing invariants, billing fault injection, and SignalR each run in
+          # isolated jobs above. Keep their infrastructure and timing-sensitive
+          # state out of this shared validation job while retaining the core and
+          # reflection-disabled serialization suites.
+          dotnet test Tests/ConduitLLM.Tests/ConduitLLM.Tests.csproj --no-build --verbosity normal --filter "FullyQualifiedName!~IntegrationTests&Category!=TimingSensitive"
+          dotnet test Tests/ConduitLLM.SerializationTests/ConduitLLM.SerializationTests.csproj --no-build --verbosity normal
         env:
           TEST_REDIS_CONNECTION: localhost:6379
           DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb

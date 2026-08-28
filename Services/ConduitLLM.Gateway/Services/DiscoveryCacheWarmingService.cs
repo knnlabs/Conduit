@@ -5,6 +5,8 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.Models;
+using ConduitLLM.Gateway.Serialization;
+using GatewayDiscoveredModelDto = ConduitLLM.Configuration.DTOs.DiscoveredModelDto;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -148,7 +150,9 @@ namespace ConduitLLM.Gateway.Services
                     _logger,
                     cancellationToken);
                 var models = projectedModels
-                    .Select(model => JsonSerializer.SerializeToElement(model, _wireJsonOptions))
+                    .Select(model => JsonSerializer.SerializeToElement(
+                        model,
+                        GatewayJsonTypeInfo.Require<GatewayDiscoveredModelDto>(_wireJsonOptions)))
                     .ToList();
 
                 // Cache the results

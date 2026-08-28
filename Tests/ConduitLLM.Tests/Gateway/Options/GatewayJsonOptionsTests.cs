@@ -3,8 +3,11 @@ using System.Text.Json;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Options;
+using ConduitLLM.Gateway.Extensions;
+using ConduitLLM.Configuration.Options;
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -49,6 +52,39 @@ public sealed class GatewayJsonOptionsTests
 
         Assert.Same(http, shared);
         Assert.Same(JsonNamingPolicy.SnakeCaseLower, shared.PropertyNamingPolicy);
+    }
+
+    [Fact]
+    public void BasicSettingsRejectOutOfRangeUsageAndBillingValues()
+    {
+        var builder = WebApplication.CreateBuilder();
+        global::Program.ConfigureBasicSettings(builder);
+        builder.Configuration["UsageTracking:MaximumStreamingToolCalls"] = "0";
+        builder.Configuration["BillingAdmission:DefaultMaximumOutputTokens"] = "0";
+        using var services = builder.Services.BuildServiceProvider();
+
+        Assert.Throws<OptionsValidationException>(() =>
+            services.GetRequiredService<IOptions<UsageTrackingOptions>>().Value);
+        Assert.Throws<OptionsValidationException>(() =>
+            services.GetRequiredService<IOptions<BillingAdmissionOptions>>().Value);
+    }
+
+    [Fact]
+    public void BillingServicesRejectOutOfRangeReconciliationValues()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["BillingReconciliation:WindowHours"] = "0"
+            })
+            .Build();
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddBillingAndPricingServices();
+        using var provider = services.BuildServiceProvider();
+
+        Assert.Throws<OptionsValidationException>(() =>
+            provider.GetRequiredService<IOptions<BillingReconciliationOptions>>().Value);
     }
 
     [Fact]

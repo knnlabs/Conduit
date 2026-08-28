@@ -169,7 +169,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 // Ensure stream_options is present
                 if (!dictObj.ContainsKey("stream_options"))
                 {
-                    dictObj["stream_options"] = new { include_usage = true };
+                    dictObj["stream_options"] = new CoreModels.StreamOptions { IncludeUsage = true };
                 }
                 return dictObj;
             }
@@ -199,8 +199,8 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 HttpMethod.Post,
                 endpoint,
                 request,
+                GetRequiredJsonTypeInfo<object>(DefaultJsonOptions),
                 CreateStandardHeaders(apiKey),
-                DefaultJsonOptions,
                 Logger,
                 cancellationToken,
                 TranslateHttpError);

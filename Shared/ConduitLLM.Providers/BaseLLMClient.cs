@@ -74,6 +74,11 @@ namespace ConduitLLM.Providers
             return options;
         }
 
+        protected static JsonTypeInfo<T> GetRequiredJsonTypeInfo<T>(JsonSerializerOptions options) =>
+            options.GetTypeInfo(typeof(T)) as JsonTypeInfo<T>
+            ?? throw new InvalidOperationException(
+                $"Generated JSON metadata is not registered for {typeof(T).FullName}.");
+
         /// <summary>
         /// Gets the authentication strategy for this provider.
         /// Override in derived classes to use provider-specific authentication methods.

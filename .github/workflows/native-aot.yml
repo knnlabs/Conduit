@@ -103,6 +103,9 @@ jobs:
             "| $($service.service) | $publish | $size | $($service.openApiReadyMilliseconds) | $memory | $($service.smokeSucceeded) |" |
               Add-Content $env:GITHUB_STEP_SUMMARY
           }
+          '' | Add-Content $env:GITHUB_STEP_SUMMARY
+          Get-Content artifacts/native-aot/reports/linker-summary.md |
+            Add-Content $env:GITHUB_STEP_SUMMARY
 
       - name: Upload Admin native runtime
         uses: actions/upload-artifact@v4

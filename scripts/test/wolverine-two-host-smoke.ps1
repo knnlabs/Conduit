@@ -83,6 +83,9 @@ param(
 $ErrorActionPreference = 'Stop'
 
 if (-not $DatabaseUrl) { Write-Error 'DatabaseUrl not set (pass -DatabaseUrl or set DATABASE_URL).' }
+if ($NativeArtifactDirectory -and -not $RedisUrl) {
+    Write-Error 'RedisUrl not set (pass -RedisUrl or set REDIS_URL) for the native two-host smoke.'
+}
 if (-not $PsqlCommand) { $PsqlCommand = "psql $DatabaseUrl" }
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..' '..')
@@ -210,6 +213,13 @@ Write-Host '== Applying EF migrations (standalone migrator) =='
 dotnet (Join-Path $migratorProject 'bin' $Configuration 'net10.0' 'ConduitLLM.Migrator.dll')
 if ($LASTEXITCODE -ne 0) { Write-Error 'standalone migrator failed' }
 
+# Wolverine retains node records briefly after an ungraceful shutdown and may prune
+# them during the next startup. Use the database clock to identify this run's nodes
+# without depending on either cleanup timing or the workstation clock.
+$nodeRegistrationStartedAt = (Invoke-Sql 'SELECT clock_timestamp()').Replace("'", "''")
+$adminNodeCountSql = "SELECT count(*) FROM wolverine_conduit_admin.wolverine_nodes WHERE started >= '$nodeRegistrationStartedAt'::timestamptz"
+$gatewayNodeCountSql = "SELECT count(*) FROM wolverine_conduit_gateway.wolverine_nodes WHERE started >= '$nodeRegistrationStartedAt'::timestamptz"
+
 $admin = $null
 $gateway = $null
 $exitCode = 1
@@ -217,7 +227,7 @@ try {
     # Admin FIRST: recreates the W1 leadership scenario (see .DESCRIPTION).
     Write-Host '== Booting Admin API (Wolverine backend) =='
     $admin = Start-ServiceHost $adminProject 'ConduitLLM.Admin' $AdminPort
-    $adminUp = Wait-ForSql 'SELECT CASE WHEN count(*) >= 1 THEN 1 ELSE 0 END FROM wolverine_conduit_admin.wolverine_nodes' '1' 'Admin node registration'
+    $adminUp = Wait-ForSql $adminNodeCountSql '1' 'Admin node registration'
 
     Write-Host '== Booting Gateway API (Wolverine backend) =='
     $gateway = Start-ServiceHost $gatewayProject 'ConduitLLM.Gateway' $GatewayPort
@@ -255,9 +265,9 @@ SELECT CASE WHEN count(*) >= 2 THEN 1 ELSE 0 END FROM wolverine_conduit_gateway.
     Assert $gatewayUp 'Gateway exclusive listeners (spend-update-events, image-generation-events) assigned and started'
 
     # (1) Separate single-node clusters — the W1 guard.
-    Assert ((Invoke-Sql 'SELECT count(*) FROM wolverine_conduit_admin.wolverine_nodes') -eq '1') `
+    Assert ((Invoke-Sql $adminNodeCountSql) -eq '1') `
         'Admin durability schema holds exactly its own node (no shared cluster)'
-    Assert ((Invoke-Sql 'SELECT count(*) FROM wolverine_conduit_gateway.wolverine_nodes') -eq '1') `
+    Assert ((Invoke-Sql $gatewayNodeCountSql) -eq '1') `
         'Gateway durability schema holds exactly its own node (no shared cluster)'
 
     # (3) The Admin cluster must never be assigned queue listener agents.

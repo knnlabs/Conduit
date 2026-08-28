@@ -45,6 +45,7 @@
     <EnableAotAnalyzer>true</EnableAotAnalyzer>
     <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
     <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
+    <DefineConstants>$(DefineConstants);CONDUIT_NATIVE_AOT</DefineConstants>
   </PropertyGroup>
 
   <!-- Native-only feature selection must be compile-time visible so optional

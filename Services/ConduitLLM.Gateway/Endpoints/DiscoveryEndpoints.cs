@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ConduitLLM.Gateway.Serialization;
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
@@ -9,6 +10,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using ConduitLLM.Gateway.DTOs;
 using ConduitLLM.Functions.Utilities;
+using ConduitLLM.Functions.DTOs;
 using GatewayDiscoveredModelDto = ConduitLLM.Configuration.DTOs.DiscoveredModelDto;
 
 namespace ConduitLLM.Gateway.Endpoints
@@ -101,7 +103,8 @@ namespace ConduitLLM.Gateway.Endpoints
             {
                 Logger.LogDebug("Returning cached discovery results for capability: {Capability}", LoggingSanitizer.S(capability ?? "all"));
                 var cachedModels = cachedResult.Data
-                    .Select(element => element.Deserialize<GatewayDiscoveredModelDto>(_wireJsonOptions))
+                    .Select(element => element.Deserialize(
+                        GatewayJsonTypeInfo.Require<GatewayDiscoveredModelDto>(_wireJsonOptions)))
                     .Where(model => model is not null)
                     .Cast<GatewayDiscoveredModelDto>()
                     .ToList();
@@ -120,7 +123,9 @@ namespace ConduitLLM.Gateway.Endpoints
             var discoveryResult = new DiscoveryModelsResult
             {
                 Data = models.Select(model =>
-                    JsonSerializer.SerializeToElement(model, _wireJsonOptions)).ToList(),
+                    JsonSerializer.SerializeToElement(
+                        model,
+                        GatewayJsonTypeInfo.Require<GatewayDiscoveredModelDto>(_wireJsonOptions))).ToList(),
                 Count = models.Count,
                 CapabilityFilter = capability
             };
@@ -219,7 +224,7 @@ namespace ConduitLLM.Gateway.Endpoints
                 catch (Exception ex)
                 {
                     Logger.LogWarning(ex, "Failed to parse parameters for model {Model}", LoggingSanitizer.S(model));
-                    parameters = JsonSerializer.SerializeToElement(new { });
+                    parameters = EmptyJsonObject();
                 }
             }
 
@@ -227,7 +232,7 @@ namespace ConduitLLM.Gateway.Endpoints
                 modelMapping.ModelProviderTypeAssociation.ModelId,
                 modelMapping.ModelAlias,
                 modelMapping.ModelProviderTypeAssociation.Model.Series?.Name ?? string.Empty,
-                parameters ?? JsonSerializer.SerializeToElement(new { })));
+                parameters ?? EmptyJsonObject()));
         }
 
         /// <summary>
@@ -301,7 +306,12 @@ namespace ConduitLLM.Gateway.Endpoints
             // Cache the results
             var discoveryResult = new DiscoveryModelsResult
             {
-                Data = new List<JsonElement> { JsonSerializer.SerializeToElement(result, _wireJsonOptions) },
+                Data = new List<JsonElement>
+                {
+                    JsonSerializer.SerializeToElement(
+                        result,
+                        GatewayJsonTypeInfo.Require<FunctionDiscoveryResponse>(_wireJsonOptions))
+                },
                 Count = result.Count,
                 CapabilityFilter = purpose
             };
@@ -376,7 +386,12 @@ namespace ConduitLLM.Gateway.Endpoints
             // Cache the results
             var discoveryResult = new DiscoveryModelsResult
             {
-                Data = new List<JsonElement> { JsonSerializer.SerializeToElement(result, _wireJsonOptions) },
+                Data = new List<JsonElement>
+                {
+                    JsonSerializer.SerializeToElement(
+                        result,
+                        GatewayJsonTypeInfo.Require<FunctionParametersResponseDto>(_wireJsonOptions))
+                },
                 Count = 1
             };
 
@@ -385,6 +400,12 @@ namespace ConduitLLM.Gateway.Endpoints
             Logger.LogInformation("Cached function parameter schema for config {ConfigId}", functionConfigurationId);
 
             return Ok(result);
+        }
+
+        private static JsonElement EmptyJsonObject()
+        {
+            using var document = JsonDocument.Parse("{}");
+            return document.RootElement.Clone();
         }
     }
 }

@@ -31,6 +31,10 @@ foreach ($service in $services) {
         "--configuration", "Release"
         "--nologo"
         "--tl:off"
+        # Rebuild cleans and builds shared project references. Running those targets
+        # concurrently can race under newer MSBuild versions and fail without a
+        # diagnostic, so keep each service graph deterministic.
+        "--maxcpucount:1"
         "--verbosity", "minimal"
         "-t:Rebuild"
         "-p:ConduitAotAudit=true"

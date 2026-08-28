@@ -82,7 +82,12 @@ namespace ConduitLLM.Providers.OpenRouter
                 using var pollScope = BeginPollingScope("CreateVideo");
                 var status = await AsyncJobPoller.PollAsync(
                     fetchStatus: ct => CoreUtils.HttpClientHelper.GetJsonAsync<OpenRouterVideoStatus>(
-                        client, $"{BaseUrl}/videos/{jobId}", headers, DefaultJsonOptions, Logger, ct),
+                        client,
+                        $"{BaseUrl}/videos/{jobId}",
+                        Serialization.ProvidersJsonContext.Default.OpenRouterVideoStatus,
+                        headers,
+                        Logger,
+                        ct),
                     classify: ClassifyVideoStatus,
                     extractSuccess: s => s,
                     extractFailure: s => new LLMCommunicationException($"OpenRouter video generation failed for job {jobId}."),

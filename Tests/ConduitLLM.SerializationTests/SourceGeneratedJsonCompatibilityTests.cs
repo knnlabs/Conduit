@@ -159,6 +159,32 @@ public sealed class SourceGeneratedJsonCompatibilityTests
         Assert.NotNull(admin.GetTypeInfo(typeof(Microsoft.AspNetCore.Http.IFormFile)));
         Assert.NotNull(gateway.GetTypeInfo(typeof(EphemeralKeyResponse)));
         Assert.NotNull(gateway.GetTypeInfo(typeof(Microsoft.AspNetCore.Http.IFormFile)));
+        Assert.NotNull(gateway.GetTypeInfo(typeof(MediaUsageMetadata)));
+    }
+
+    [Fact]
+    public void Gateway_internal_metadata_uses_named_contracts_without_shape_expansion()
+    {
+        var value = new MediaTaskAccountingMetadata(
+            "image",
+            "task-sourcegen",
+            "queued",
+            ImageCount: 2,
+            Quality: "hd",
+            Size: "1024x1024",
+            Style: "vivid");
+
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(
+            value,
+            GatewayInternalJsonContext.Default.MediaTaskAccountingMetadata));
+        var root = document.RootElement;
+
+        Assert.Equal("image", root.GetProperty("type").GetString());
+        Assert.Equal("task-sourcegen", root.GetProperty("taskId").GetString());
+        Assert.Equal(2, root.GetProperty("imageCount").GetInt32());
+        Assert.False(root.TryGetProperty("durationSeconds", out _));
+        Assert.False(root.TryGetProperty("resolution", out _));
+        Assert.False(root.TryGetProperty("fps", out _));
     }
 
     [Fact]

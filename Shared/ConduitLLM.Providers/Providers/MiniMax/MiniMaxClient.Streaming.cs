@@ -55,7 +55,7 @@ namespace ConduitLLM.Providers.MiniMax
                 HttpMethod.Post,
                 endpoint,
                 miniMaxRequest,
-                null,
+                MiniMaxStreamJsonContext.Default.MiniMaxChatCompletionRequest,
                 null,
                 Logger,
                 cancellationToken);
