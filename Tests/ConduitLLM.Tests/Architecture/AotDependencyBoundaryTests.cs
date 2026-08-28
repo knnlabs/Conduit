@@ -6,8 +6,13 @@ using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Messaging.Wolverine;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.OpenApi;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Gateway.Authentication;
+using ConduitLLM.Gateway.Endpoints;
+using ConduitLLM.Gateway.EventHandlers;
+using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Persistence.Npgsql;
 
 using Microsoft.EntityFrameworkCore;
@@ -137,6 +142,54 @@ public sealed class AotDependencyBoundaryTests
                 Assert.False(ContainsQueryable(method.ReturnType), $"{repositoryInterface.Name}.{method.Name} returns IQueryable");
                 Assert.DoesNotContain(method.GetParameters(), parameter => ContainsQueryable(parameter.ParameterType));
             }
+        }
+    }
+
+    [Fact]
+    public void GatewayRequestPathUsesRuntimeVirtualKeyContract()
+    {
+        Assert.True(typeof(IVirtualKeyRuntimeService).IsAssignableFrom(typeof(IVirtualKeyService)));
+
+        var runtimeMethods = typeof(IVirtualKeyRuntimeService).GetMethods()
+            .Select(method => method.Name)
+            .OrderBy(name => name)
+            .ToArray();
+        Assert.Equal(
+            [
+                nameof(IVirtualKeyRuntimeService.GetVirtualKeyInfoForValidationAsync),
+                nameof(IVirtualKeyRuntimeService.UpdateSpendAsync),
+                nameof(IVirtualKeyRuntimeService.ValidateVirtualKeyAsync),
+                nameof(IVirtualKeyRuntimeService.ValidateVirtualKeyForAuthenticationAsync)
+            ],
+            runtimeMethods);
+
+        var requestPathTypes = new[]
+        {
+            typeof(VirtualKeyAuthenticationHandler),
+            typeof(VirtualKeySignalRAuthenticationHandler),
+            typeof(VirtualKeyHubFilter),
+            typeof(RequireBalanceEndpointFilter),
+            typeof(DiscoveryEndpoints),
+            typeof(UsageTrackingMiddleware),
+            typeof(SpendUpdatedHandler)
+        };
+
+        foreach (var requestPathType in requestPathTypes)
+        {
+            var parameters = requestPathType.GetConstructors()
+                .Cast<MethodBase>()
+                .Concat(requestPathType.GetMethods(
+                    BindingFlags.Instance |
+                    BindingFlags.Static |
+                    BindingFlags.Public |
+                    BindingFlags.NonPublic |
+                    BindingFlags.DeclaredOnly))
+                .SelectMany(method => method.GetParameters())
+                .Select(parameter => parameter.ParameterType)
+                .ToArray();
+
+            Assert.Contains(typeof(IVirtualKeyRuntimeService), parameters);
+            Assert.DoesNotContain(typeof(IVirtualKeyService), parameters);
         }
     }
 

@@ -6,7 +6,7 @@ using ConduitLLM.Gateway.Metrics;
 using ConduitLLM.Gateway.Services;
 using ConduitLLM.Gateway.UsageTracking;
 using ConduitLLM.Gateway.Utilities;
-using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
+using IVirtualKeyRuntimeService = ConduitLLM.Core.Interfaces.IVirtualKeyRuntimeService;
 
 namespace ConduitLLM.Gateway.Middleware;
 
@@ -31,7 +31,7 @@ public partial class UsageTrackingMiddleware
         ICostCalculationService costCalculationService,
         IBatchSpendUpdateService batchSpendService,
         IRequestLogService requestLogService,
-        IVirtualKeyService virtualKeyService,
+        IVirtualKeyRuntimeService virtualKeyService,
         IBillingAuditService billingAuditService,
         IToolCostCalculationService toolCostCalculationService)
     {

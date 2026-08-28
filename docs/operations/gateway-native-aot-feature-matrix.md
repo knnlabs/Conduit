@@ -32,6 +32,12 @@ The following features are excluded from the first native image and appear in `e
 
 EF Core 10 can generate the compiled `ConduitDbContext` model, but its NativeAOT query precompiler rejects Conduit's repository abstractions as dynamic LINQ. A native process therefore cannot compile those queries at runtime. This blocks virtual-key lookup and every downstream authenticated workflow, including provider HTTP/SSE, cancellation, Redis-backed rate limiting/cache invalidation, authenticated SignalR, and S3 media APIs. Those behaviors remain fully available in the JIT image.
 
+Gateway request-time consumers now depend on `IVirtualKeyRuntimeService`, while
+Admin-style key management remains behind the broader `IVirtualKeyService`. Both
+contracts resolve to the same scoped JIT implementation today. This is the replacement
+seam for a typed native authentication/billing adapter; it does not remove any exclusion
+above until the adapter and native process parity tests are complete.
+
 The compiled model is checked in under `Shared/ConduitLLM.Configuration/Data/CompiledModels`. Regenerate it whenever the EF model changes:
 
 ```powershell

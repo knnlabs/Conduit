@@ -15,7 +15,7 @@ namespace ConduitLLM.Gateway.Endpoints
         private readonly ILogger<ImagesEndpoints> _logger;
         private readonly IModelProviderMappingService _modelMappingService;
         private readonly IAsyncTaskService _taskService;
-        private readonly ConduitLLM.Core.Interfaces.IVirtualKeyService _virtualKeyService;
+        private readonly ConduitLLM.Core.Interfaces.IVirtualKeyRuntimeService _virtualKeyService;
         private readonly IMediaLifecycleService _mediaLifecycleService;
         private readonly IProviderErrorTrackingService _errorTrackingService;
         private readonly Base64MediaProcessor _base64MediaProcessor;
@@ -28,7 +28,7 @@ namespace ConduitLLM.Gateway.Endpoints
             IModelProviderMappingService modelMappingService,
             IAsyncTaskService taskService,
             IEventPublisher eventPublisher,
-            ConduitLLM.Core.Interfaces.IVirtualKeyService virtualKeyService,
+            ConduitLLM.Core.Interfaces.IVirtualKeyRuntimeService virtualKeyService,
             IMediaLifecycleService mediaLifecycleService,
             IProviderErrorTrackingService errorTrackingService,
             Base64MediaProcessor base64MediaProcessor,

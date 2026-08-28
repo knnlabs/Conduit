@@ -12,7 +12,7 @@ namespace ConduitLLM.Gateway.Authentication
     /// </summary>
     public class VirtualKeyHubFilter : IHubFilter
     {
-        private readonly IVirtualKeyService _virtualKeyService;
+        private readonly IVirtualKeyRuntimeService _virtualKeyService;
         private readonly ILogger<VirtualKeyHubFilter> _logger;
         private readonly IReadOnlyList<string> _keyHeaders;
 
@@ -20,7 +20,7 @@ namespace ConduitLLM.Gateway.Authentication
         /// Initializes a new instance of VirtualKeyHubFilter
         /// </summary>
         public VirtualKeyHubFilter(
-            IVirtualKeyService virtualKeyService,
+            IVirtualKeyRuntimeService virtualKeyService,
             ILogger<VirtualKeyHubFilter> logger,
             IOptions<GatewaySecurityOptions> securityOptions)
         {
