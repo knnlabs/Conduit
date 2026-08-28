@@ -51,6 +51,13 @@ evidence that the remaining query inventory is native-ready, and their EF refere
 implementations remain query owners until a native host can select alternate backends
 for every operation it needs.
 
+Phase 5 adds a narrower request-time boundary rather than moving the VirtualKey EF
+navigation graph: `IVirtualKeyRuntimeStore` exposes hydrated authentication/rate-limit
+snapshots, timestamp touches, and atomic balance/ledger adjustments. Its EF adapter uses
+fixed projections and updates, while its typed-Npgsql adapter is covered by the shared
+PostgreSQL contract and published native probe. The JIT Gateway has not switched to this
+store yet, so it is evidence for the next data-plane step rather than a support claim.
+
 ## Exit criteria for revisiting the decision
 
 1. EF Core and Npgsql document the selected NativeAOT path as production-supported.
